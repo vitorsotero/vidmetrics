@@ -29,63 +29,53 @@ export default function Dashboard({ initialVideos = [] }: DashboardProps) {
   const [activeChart, setActiveChart] = useState<'views' | 'likes' | 'comments' | 'engagementRate' | 'velocity'>('views');
   const [sortOption, setSortOption] = useState('Top Performing');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const sortOptions = ['Top Performing', 'Newest'];
 
   useEffect(() => {
     setCurrentPage(1);
   }, [timeFilter, videos]);
 
-  const exportPDF = async () => {
-    try {
-      setIsExporting(true);
-      const { toJpeg } = await import('html-to-image');
-      
-      const jsPDFModule = await import('jspdf');
-      const jsPDF = (jsPDFModule.default ? jsPDFModule.default : jsPDFModule.jsPDF) as any;
+  const exportCSV = () => {
+    // Top videos by performance based on view count
+    const topVideos = [...filteredVideos].sort((a, b) => b.viewCount - a.viewCount);
 
-      const element = document.getElementById('dashboard-content');
-      if (!element) return;
-      
-      const originalBg = element.style.backgroundColor;
-      element.style.backgroundColor = '#0f0f0f';
-      
-      const imgData = await toJpeg(element, { 
-        cacheBust: true, 
-        backgroundColor: '#0f0f0f',
-        pixelRatio: 1.2,
-        quality: 0.9,
-      });
-      
-      element.style.backgroundColor = originalBg;
-      
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      const img = new Image();
-      img.src = imgData;
-      await new Promise((resolve) => { img.onload = resolve; });
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (img.height * pdfWidth) / img.width;
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      
-      // Force Blob download to prevent Chrome extension-less GUID naming bugs on large payloads
-      const pdfBlob = pdf.output('blob');
-      const url = URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `vidmetrics_report_${handle || 'competitor'}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("PDF generation failed", error);
-      alert("Failed to export PDF! See console for details.");
-    } finally {
-      setIsExporting(false);
-    }
+    const lines = [];
+
+    // --- CHANNEL SUMMARY ---
+    lines.push("--- CHANNEL SUMMARY ---");
+    lines.push("Channel Handle,Total Views,Total Likes,Total Comments,Avg. Engagement Rate (%),Avg. Velocity (views/hr)");
+    lines.push(`"${handle}",${totalViews},${totalLikes},${totalComments},${avgEngagement},${avgVelocity}`);
+    lines.push("");
+
+    // --- TOP PERFORMING VIDEOS ---
+    lines.push("--- TOP PERFORMING VIDEOS ---");
+    lines.push("Rank,Video ID,Video Title,Published Date,Total Views,Total Likes,Total Comments,Engagement Rate (%),Velocity (views/hr),Trend Score");
+
+    topVideos.forEach((v, index) => {
+      lines.push(`${index + 1}`
+        + `,"${v.id}"`
+        + `,"${v.title.replace(/"/g, '""')}"`
+        + `,"${new Date(v.publishedAt).toLocaleDateString()}"`
+        + `,${v.viewCount}`
+        + `,${v.likeCount || 0}`
+        + `,${v.commentCount || 0}`
+        + `,${v.engagementRate?.toFixed(2) || '0.00'}`
+        + `,${v.velocity?.toFixed(1) || '0.0'}`
+        + `,${Math.round(v.trendScore || 0)}`
+      );
+    });
+
+    const csvContent = lines.join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `vidmetrics_${handle || 'report'}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
 
@@ -251,25 +241,16 @@ export default function Dashboard({ initialVideos = [] }: DashboardProps) {
                 Run Analysis
               </button>
               <button 
-                onClick={exportPDF}
-                disabled={isExporting || videos.length === 0}
+                onClick={exportCSV}
+                disabled={videos.length === 0}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all whitespace-nowrap min-w-[140px] justify-center ${
-                  isExporting || videos.length === 0 
+                  videos.length === 0 
                   ? 'bg-transparent border-white/5 text-white/30 cursor-not-allowed' 
                   : 'bg-white/5 border-white/10 hover:bg-white/10 text-white cursor-pointer'
                 }`}
               >
-                {isExporting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/60 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-white/60">Exporting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 text-white/60" />
-                    <span className="text-white/60">Export PDF</span>
-                  </>
-                )}
+                <Download className="w-4 h-4 text-white/60" />
+                <span className="text-white/60">Export CSV</span>
               </button>
             </div>
           </div>
