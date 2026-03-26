@@ -1,6 +1,6 @@
 import { YouTubeVideo } from './youtube';
 
-export const MOCK_VIDEOS: YouTubeVideo[] = [
+const mockBase = [
   {
     id: '1',
     title: 'How I Built a SaaS in 4 Days (Full Blueprint)',
@@ -49,6 +49,12 @@ export const MOCK_VIDEOS: YouTubeVideo[] = [
     viewCount: 15000,
     likeCount: 800,
     commentCount: 45,
-    velocity: 0.2,
+    velocity: 0.1,
   }
 ];
+
+export const MOCK_VIDEOS: YouTubeVideo[] = mockBase.map(v => {
+  const engagementRate = v.viewCount > 0 ? ((v.likeCount + v.commentCount) / v.viewCount) * 100 : 0;
+  const trendScore = (v.viewCount * 0.5) + (v.velocity * 0.3) + (engagementRate * 1000 * 0.2);
+  return { ...v, engagementRate, trendScore };
+});
