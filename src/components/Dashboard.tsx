@@ -341,13 +341,13 @@ export default function Dashboard({ initialVideos = [] }: DashboardProps) {
           <div className="glass-card p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h3 className="text-xl font-display font-semibold">Performance Trends</h3>
-                <div className="flex gap-1 bg-white/5 p-1 rounded-xl">
+                <div className="flex gap-1 bg-white/5 p-1 rounded-xl overflow-x-auto max-w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {['views', 'likes', 'comments', 'engagementRate', 'velocity'].map(metric => (
                     <button 
                       key={metric}
                       onClick={() => setActiveChart(metric as any)}
                       className={cn(
-                        "px-4 py-1.5 rounded-lg text-sm font-medium transition-all capitalize", 
+                        "px-4 py-1.5 rounded-lg text-sm font-medium transition-all capitalize whitespace-nowrap flex-shrink-0", 
                         activeChart === metric ? "bg-white/10 text-white shadow-md shadow-black/20" : "text-white/40 hover:text-white"
                       )}
                     >
